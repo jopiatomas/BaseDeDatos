@@ -1,0 +1,122 @@
+CREATE DATABASE argentinas;
+USE argentinas;
+
+CREATE TABLE Clientes (
+	ClienteID INT PRIMARY KEY,
+	Nombre VARCHAR(50),
+	Apellido VARCHAR(50),
+	Email VARCHAR(100),
+	Telefono VARCHAR(15)
+);
+CREATE TABLE Pedidos (
+	PedidoID INT PRIMARY KEY,
+	FechaPedido DATE,
+	ClienteID INT,
+    Total_Pedido DECIMAL (10, 2),
+	FOREIGN KEY (ClienteID) REFERENCES Clientes(ClienteID)
+);
+CREATE TABLE Productos (
+	ProductoID INT PRIMARY KEY,
+	NombreProducto VARCHAR(100),
+	Precio DECIMAL(10, 2),
+    Stock INT
+);
+
+CREATE TABLE DetallesPedido (
+	DetalleID INT PRIMARY KEY,
+	PedidoID INT,
+	ProductoID INT,
+	Cantidad INT,
+	FOREIGN KEY (PedidoID) REFERENCES Pedidos(PedidoID),
+	FOREIGN KEY (ProductoID) REFERENCES Productos(ProductoID)
+);
+
+create table AuditoriaClientes (
+    AuditoriaID INT PRIMARY KEY AUTO_INCREMENT,
+    ClienteID INT,
+    Nombre VARCHAR(50),
+    Apellido VARCHAR(50),
+    Email VARCHAR(100),
+    Telefono VARCHAR(15),
+    TipoOperacion VARCHAR(30),
+    FechaInsercion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+create table AuditoriaPedidos (
+    AuditoriaID INT PRIMARY KEY AUTO_INCREMENT,
+    PedidoID INT,
+    FechaPedido DATE,
+    ClienteID INT,
+    Total_Pedido DECIMAL (10, 2),
+    TipoOperacion VARCHAR(30),
+    FechaInsercion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+create table AuditoriaProductos (
+    AuditoriaID INT PRIMARY KEY AUTO_INCREMENT,
+    ProductoID INT,
+    NombreProducto VARCHAR(100),
+    Precio DECIMAL(10, 2),
+    Stock INT,
+    TipoOperacion VARCHAR(30),
+    FechaInsercion TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+);
+
+INSERT INTO Clientes (ClienteID, Nombre, Apellido, Email, Telefono)
+VALUES
+(1, 'Juan', 'Pérez', 'juan@email.com', '123-456-7890'),
+(2, 'María', 'Gómez', 'maria@email.com', '987-654-3210'),
+(3, 'Carlos', 'López', 'carlos@email.com', '555-123-4567');
+
+DELIMITER // 
+-- 1. Crear un trigger para auditar inserciones en la tabla Clientes.
+CREATE TRIGGER auditarInserciones
+AFTER INSERT ON Clientes -- actua despues de un insert pero ya tiene que estar creado, no trabaja sobre registro previos
+FOR EACH ROW
+BEGIN
+	INSERT INTO AuditoriaClientes (ClienteID, Nombre, Apellido, Email, Telefono, TipoOperacion, FechaInsercion)
+	VALUES (NEW.ClienteID, NEW.Nombre, NEW.Apellido, NEW.Email, NEW.Telefono, 'INSERT', NOW());
+END 
+// 
+DELIMITER ;
+
+
+DELIMITER // 
+-- 2. Crear un trigger para auditar inserciones en la tabla Clientes.
+CREATE TRIGGER acutalizarInserciones
+AFTER UPDATE ON Clientes -- actua despues de un insert pero ya tiene que estar creado, no trabaja sobre registro previos
+FOR EACH ROW
+BEGIN
+	INSERT INTO AuditoriaClientes (ClienteID, Nombre, Apellido, Email, Telefono, TipoOperacion, FechaInsercion)
+	VALUES (NEW.ClienteID, NEW.Nombre, NEW.Apellido, NEW.Email, NEW.Telefono, 'UPDATE', NOW());
+END 
+// 
+DELIMITER ;
+
+DELIMITER // 
+-- 3. Crear un trigger para auditar inserciones en la tabla Clientes.
+CREATE TRIGGER eliminarInserciones
+BEFORE DELETE ON Clientes -- actua despues de un insert pero ya tiene que estar creado, no trabaja sobre registro previos
+FOR EACH ROW
+BEGIN
+	INSERT INTO AuditoriaClientes (ClienteID, Nombre, Apellido, Email, Telefono, TipoOperacion, FechaInsercion)
+	VALUES (OLD.ClienteID, OLD.Nombre, OLD.Apellido, OLD.Email, OLD.Telefono, 'DELETE', NOW());
+END 
+// 
+DELIMITER ;
+
+
+-- Ejercicio 1
+SELECT * FROM AuditoriaClientes;
+
+-- Ejercicio 2
+UPDATE Clientes 
+SET Nombre = 'Juan Carlos', Email = 'juancarlos@mail.com' 
+WHERE ClienteID = 1;
+SELECT * FROM AuditoriaClientes;
+
+-- Ejercicio 3
+
+DROP TRIGGER eliminarInserciones;
+DELETE FROM Clientes WHERE ClienteID = 2;
+SELECT * FROM AuditoriaClientes;
