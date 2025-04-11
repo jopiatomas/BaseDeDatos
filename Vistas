@@ -1,0 +1,249 @@
+CREATE DATABASE lukeskyc4;
+USE lukeskyc4;
+
+-- Tabla Clientes
+CREATE TABLE Clientes (
+    cliente_id INT PRIMARY KEY,
+    nombre VARCHAR(50),
+    apellido VARCHAR(50),
+    ciudad VARCHAR(50),
+    email VARCHAR(50)
+);
+
+	-- Tabla Productos
+	CREATE TABLE Productos (
+		producto_id INT PRIMARY KEY,
+		nombre_producto VARCHAR(50),
+		categoria VARCHAR(50),
+		precio DECIMAL(10, 2)
+	);
+
+-- Tabla Pedidos
+CREATE TABLE Pedidos (
+    pedido_id INT PRIMARY KEY,
+    cliente_id INT,
+    fecha_pedido DATE,
+    FOREIGN KEY (cliente_id) REFERENCES Clientes(cliente_id)
+);
+
+-- Tabla Detalle_Pedido
+CREATE TABLE Detalle_Pedido (
+    detalle_id INT PRIMARY KEY,
+    pedido_id INT,
+    producto_id INT,
+    cantidad INT,
+    FOREIGN KEY (pedido_id) REFERENCES Pedidos(pedido_id),
+    FOREIGN KEY (producto_id) REFERENCES Productos(producto_id)
+);
+
+-- Insertar registros en Clientes
+INSERT INTO Clientes (cliente_id, nombre, apellido, ciudad, email) VALUES
+(1, 'Ana', 'García', 'Madrid', 'ana.garcia@email.com'),
+(2, 'Juan', 'Pérez', 'Barcelona', 'juan.perez@email.com'),
+(3, 'María', 'López', 'Madrid', 'maria.lopez@email.com'),
+(4, 'Carlos', 'Ruiz', 'Valencia', 'carlos.ruiz@email.com');
+
+-- Insertar registros en Productos
+INSERT INTO Productos (producto_id, nombre_producto, categoria, precio) VALUES
+(1, 'Laptop', 'Electrónicos', 1200.00),
+(2, 'Tablet', 'Electrónicos', 300.00),
+(3, 'Libro', 'Libros', 25.00),
+(4, 'Smartphone', 'Electrónicos', 800.00);
+
+-- Insertar registros en Pedidos
+INSERT INTO Pedidos (pedido_id, cliente_id, fecha_pedido) VALUES
+(1, 1, '2023-10-26'),
+(2, 1, '2023-11-10'),
+(3, 2, '2023-11-05'),
+(4, 3, '2023-10-28'),
+(5, 4, '2023-11-15');
+
+-- Insertar registros en Detalle_Pedido
+INSERT INTO Detalle_Pedido (detalle_id, pedido_id, producto_id, cantidad) VALUES
+(1, 1, 1, 1),
+(2, 1, 2, 2),
+(3, 2, 4, 1),
+(4, 3, 3, 3),
+(5, 4, 1, 1),
+(6, 5, 2, 2),
+(7, 5, 4, 1);
+
+
+CREATE VIEW clientes_por_ciudad AS
+	SELECT nombre, apellido, email 
+    FROM Clientes
+    WHERE ciudad LIKE 'Madrid'
+    WITH CHECK OPTION;
+    
+    
+SELECT * FROM clientes_por_ciudad;
+
+
+-- Ejercicio 2
+CREATE VIEW resumen_ventas_categoria AS
+	select p.categoria,
+    SUM(dp.cantidad) AS total_ventas
+    FROM Productos p
+    JOIN Detalle_Pedido dp ON dp.producto_id = p.producto_id
+    GROUP BY p.categoria;
+    
+SELECT * FROM resumen_ventas_categoria;
+
+-- Ejercicio 3
+CREATE VIEW clientes_total_pedidos AS
+	SELECT c.nombre AS Nombre, c.apellido AS Apellido,
+    COUNT(p.cliente_id) AS Cantidad_Pedidos
+    FROM Clientes c
+    JOIN Pedidos p ON p.cliente_id = c.cliente_id
+    GROUP BY c.cliente_id, c.nombre, c.apellido;
+
+    
+    drop view clientes_total_pedidos;
+SELECT * from clientes_total_pedidos;    
+
+
+-- Ejercicio 4
+CREATE VIEW productos_mas_vendidos_ciudad AS
+	SELECT c.ciudad as Ciudad,
+			pr.nombre_producto as Nombre_Producto,
+            SUM(dp.cantidad) as Total_Vendida
+            FROM Clientes c
+            JOIN Pedidos p ON c.cliente_id = p.cliente_id
+            JOIN Detalle_Pedido dp ON p.pedido_id = dp.pedido_id
+            JOIN Productos pr ON dp.producto_id = pr.producto_id
+            GROUP BY (c.ciudad), pr.nombre_producto;
+            
+            
+            
+select * from productos_mas_vendidos_ciudad;          
+DROP VIEW productos_mas_vendidos_ciudad;
+
+
+-- Ejercicio 5
+CREATE VIEW ingresos_por_mes AS
+	SELECT 
+    DATE_FORMAT(p.fecha_pedido, '%Y-%m') AS mes_anio,
+    SUM(dp.cantidad * pr.precio) AS total_ingresos
+FROM 
+    Pedidos p
+JOIN 
+    Detalle_Pedido dp ON p.pedido_id = dp.pedido_id
+JOIN 
+    Productos pr ON dp.producto_id = pr.producto_id
+GROUP BY 
+    DATE_FORMAT(p.fecha_pedido, '%Y-%m')
+ORDER BY 
+    mes_anio;
+
+select * from ingresos_por_mes;
+
+-- Ejercicio 6
+CREATE VIEW productos_electronicos AS
+	SELECT producto_id, nombre_producto, categoria, precio from Productos
+    WHERE categoria LIKE 'Electrónicos';
+
+drop view productos_electronicos;
+select * from productos_electronicos;
+
+CREATE VIEW ventas_electronicos AS
+SELECT 
+    dp.*
+FROM 
+    Detalle_Pedido dp
+JOIN 
+    productos_electronicos pe ON dp.producto_id = pe.producto_id
+WITH LOCAL CHECK OPTION;
+
+select * from ventas_electronicos;
+
+
+
+-- Ejercicio 7
+CREATE VIEW productos_electronicos_1 AS
+	SELECT producto_id, nombre_producto, categoria, precio from Productos
+    WHERE categoria LIKE 'Electrónicos';
+
+drop view productos_electronicos_1;
+select * from productos_electronicos;
+
+CREATE VIEW ventas_electronicos_1 AS
+SELECT 
+    dp.*
+FROM 
+    Detalle_Pedido dp
+JOIN 
+    productos_electronicos pe ON dp.producto_id = pe.producto_id
+WITH CASCADED CHECK OPTION;
+			
+select * from ventas_electronicos;            
+select * from ventas_electronicos_1;     
+
+
+-- Ejercicio 8
+CREATE VIEW clientes_productos_favoritos AS
+	SELECT c.nombre, c.apellido,
+    (SELECT pr.nombre_producto
+        FROM Pedidos p
+        JOIN Detalle_Pedido dp ON p.pedido_id = dp.pedido_id
+        JOIN Productos pr ON dp.producto_id = pr.producto_id
+        WHERE p.cliente_id = c.cliente_id
+        GROUP BY pr.producto_id
+        ORDER BY SUM(dp.cantidad) DESC
+        LIMIT 1) AS producto_favorito
+    FROM Clientes c;
+    
+select * from clientes_productos_favoritos;
+ 
+ 
+-- Ejercicio 9
+CREATE VIEW clientes_pedidos_recientes AS
+	SELECT c.nombre, c.apellido,
+    (SELECT MAX(p.fecha_pedido)
+    FROM Pedidos p
+    WHERE p.cliente_id = c.cliente_id) as fecha
+
+    FROM Clientes c;
+    
+    
+select * from clientes_pedidos_recientes;  
+
+-- Ejercicio 9
+CREATE VIEW clientes_pedidos_recientes_con_nombre_producto AS
+	SELECT c.nombre, c.apellido, pr.nombre_producto,
+    (SELECT MAX(p.fecha_pedido)
+    FROM Pedidos p
+    WHERE p.cliente_id = c.cliente_id) as fecha
+
+    FROM Productos pr
+    JOIN Detalle_Pedido dp ON pr.producto_id = dp.producto_id
+    JOIN Pedidos p ON dp.pedido_id = p.pedido_id
+    JOIN Clientes c ON p.cliente_id = c.cliente_id ;
+    -- maaaaaaal
+    
+drop view clientes_pedidos_recientes_con_nombre_producto;
+select * from clientes_pedidos_recientes_con_nombre_producto;     
+
+
+CREATE VIEW clientes_pedidos_recientes_con_nombre_producto_gpt AS
+SELECT 
+    c.nombre, 
+    c.apellido,
+    (
+        SELECT pr.nombre_producto
+        FROM Pedidos p
+        JOIN Detalle_Pedido dp ON p.pedido_id = dp.pedido_id
+        JOIN Productos pr ON dp.producto_id = pr.producto_id
+        WHERE p.cliente_id = c.cliente_id
+        ORDER BY p.fecha_pedido DESC
+        LIMIT 1
+    ) AS producto_mas_reciente,
+    (
+        SELECT MAX(p2.fecha_pedido)
+        FROM Pedidos p2
+        WHERE p2.cliente_id = c.cliente_id
+    ) AS fecha_mas_reciente
+FROM Clientes c;
+
+
+drop view clientes_pedidos_recientes_con_nombre_producto_gpt;
+select * from clientes_pedidos_recientes_con_nombre_producto_gpt;
